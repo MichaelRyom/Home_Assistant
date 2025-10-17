@@ -1,0 +1,207 @@
+- sensor:
+    - name: "Electricity Price Table"
+      unique_id: electricity_price_table
+      state: "{{ now() }}"
+      attributes:
+        rows: >-
+          {% set today   = state_attr('sensor.energi_data_service', 'raw_today')   or [] %}
+          {% set tomorrow = state_attr('sensor.energi_data_service', 'raw_tomorrow') or [] %}
+          {% set data = today + tomorrow %}
+          {% if not data %}
+            []
+          {% else %}
+            {% set now_dt = now() %}                     {# current datetime #}
+            {% set ns = namespace(rows=[]) %}
+            {% for p in data %}
+              {% set start = as_datetime(p['hour']) %}   {# timestamp from the source #}
+              {% if start >= now_dt %}                  {# keep only future rows #}
+                {% set price = p['price'] | float(0) %}
+                {% set row = {
+                  'start': start.strftime('%H:%M'),
+                  'date' : start.strftime('%Y-%m-%d'),
+                  'price': '%.3f' % price
+                } %}
+                {% set ns.rows = ns.rows + [row] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.rows }}
+          {% endif %}
+        forecast: >-
+          {% set forecast   = state_attr('sensor.energi_data_service', 'forecast')   or [] %}
+          {% set today   = state_attr('sensor.energi_data_service', 'raw_today')   or [] %}
+          {% set data = today + forecast %}
+          {% if not data %}
+            []
+          {% else %}
+            {% set now_dt = now() %}                     {# current datetime #}
+            {% set ns = namespace(rows=[]) %}
+            {% for p in data %}
+              {% set start = as_datetime(p['hour']) %}   {# timestamp from the source #}
+              {% if start >= now_dt %}                  {# keep only future rows #}
+                {% set price = p['price'] | float(0) %}
+                {% set row = {
+                  'start': start.strftime('%H:%M'),
+                  'date' : start.strftime('%Y-%m-%d'),
+                  'price': '%.3f' % price
+                } %}
+                {% set ns.rows = ns.rows + [row] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.rows }}
+          {% endif %}
+        next24h: >-
+          {% set forecast = state_attr('sensor.energi_data_service', 'forecast') or [] %}
+          {% set today    = state_attr('sensor.energi_data_service', 'raw_today') or [] %}
+          {% set data     = today + forecast %}
+          {% if not data %}
+            []
+          {% else %}
+            {% set now      = now() %}
+            {% set limit    = now + timedelta(hours=24) %}   {# 24‑hour window #}
+            {% set ns       = namespace(rows=[]) %}
+            {% for p in data %}
+              {% set start = as_datetime(p['hour']) %}        {# timestamp from the source #}
+              {% if now <= start <= limit %}                 {# keep only rows within the next day #}
+                {% set price = p['price'] | float(0) %}
+                {% set row = {
+                  'start' : start.strftime('%H:%M'),
+                  'date'  : start.strftime('%Y-%m-%d'),
+                  'price' : '%.3f' % price
+                } %}
+                {% set ns.rows = ns.rows + [row] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.rows }}
+          {% endif %}
+
+- sensor:
+    - name: "Cheapest Electricity Windows"
+      unique_id: cheapest_electricity_windows
+      state: >
+        {% set rows = state_attr('sensor.electricity_price_table','rows') or [] %}
+        {% if rows | length == 0 %}
+          No data
+        {% else %}
+          {% set groups = rows | groupby('date') %}
+          {% set ns = namespace(best={}, parts=[]) %}
+          {% for grp in groups %}
+            {% set day = grp.grouper %}
+            {% set day_rows = grp.list | sort(attribute='start') %}
+            {% set max_slots = day_rows | length %}
+            {% for win_len in range(4,49) %}
+              {% if win_len > max_slots %}{% continue %}{% endif %}
+              {% for i in range(max_slots - win_len + 1) %}
+                {% set win = day_rows[i:i+win_len] %}
+                {% set total = win | map(attribute='price') | map('float') | sum %}
+                {% set cur = ns.best.get(win_len) %}
+                {% if cur is none or total < cur.total %}
+                  {% set entry = {
+                    "date": day,
+                    "start": win[0].start,
+                    "end": win[-1].start,
+                    "total": total,
+                    "slots": win_len
+                  } %}
+                  {% set ns.best = ns.best | combine({ win_len: entry }) %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+          {% set wanted = [8,12,16,20,24] %}
+          {% for w in wanted %}
+            {% set rec = ns.best.get(w) %}
+            {% if rec is defined %}
+              {% set line = ((w/4)|int)|string ~ "h " ~ rec.date ~ " " ~ rec.start ~ " (" ~ ("%.3f"|format(rec.total/w)) ~ "kr/avg.)" %}
+              {% set ns.parts = ns.parts + [line] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.parts | join('\n') }}
+        {% endif %}
+
+- sensor:
+    - name: "Cheapest Electricity Windows forecast"
+      unique_id: cheapest_electricity_windows_forecast
+      state: >
+        {% set rows = state_attr('sensor.electricity_price_table','forecast') or [] %}
+        {% if rows | length == 0 %}
+          No data
+        {% else %}
+          {% set groups = rows | groupby('date') %}
+          {% set ns = namespace(best={}, parts=[]) %}
+          {% for grp in groups %}
+            {% set day = grp.grouper %}
+            {% set day_rows = grp.list | sort(attribute='start') %}
+            {% set max_slots = day_rows | length %}
+            {% for win_len in range(4,49) %}
+              {% if win_len > max_slots %}{% continue %}{% endif %}
+              {% for i in range(max_slots - win_len + 1) %}
+                {% set win = day_rows[i:i+win_len] %}
+                {% set total = win | map(attribute='price') | map('float') | sum %}
+                {% set cur = ns.best.get(win_len) %}
+                {% if cur is none or total < cur.total %}
+                  {% set entry = {
+                    "date": day,
+                    "start": win[0].start,
+                    "end": win[-1].start,
+                    "total": total,
+                    "slots": win_len
+                  } %}
+                  {% set ns.best = ns.best | combine({ win_len: entry }) %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+          {% set wanted = [8,12,16,20,24] %}
+          {% for w in wanted %}
+            {% set rec = ns.best.get(w) %}
+            {% if rec is defined %}
+              {% set line = ((w/4)|int)|string ~ "h " ~ rec.date ~ " " ~ rec.start ~ " (" ~ ("%.3f"|format(rec.total/w)) ~ "kr/avg.)" %}
+              {% set ns.parts = ns.parts + [line] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.parts | join('\n') }}
+        {% endif %}
+
+- sensor:
+    - name: "Cheapest Electricity Windows Next 24 Hours"
+      unique_id: cheapest_electricity_windows_Next_24_Hours
+      state: >
+        {% set rows = state_attr('sensor.electricity_price_table','next24h') or [] %}
+        {% if rows | length == 0 %}
+          No data
+        {% else %}
+          {% set groups = rows | groupby('date') %}
+          {% set ns = namespace(best={}, parts=[]) %}
+          {% for grp in groups %}
+            {% set day = grp.grouper %}
+            {% set day_rows = grp.list | sort(attribute='start') %}
+            {% set max_slots = day_rows | length %}
+            {% for win_len in range(4,49) %}
+              {% if win_len > max_slots %}{% continue %}{% endif %}
+              {% for i in range(max_slots - win_len + 1) %}
+                {% set win = day_rows[i:i+win_len] %}
+                {% set total = win | map(attribute='price') | map('float') | sum %}
+                {% set cur = ns.best.get(win_len) %}
+                {% if cur is none or total < cur.total %}
+                  {% set entry = {
+                    "date": day,
+                    "start": win[0].start,
+                    "end": win[-1].start,
+                    "total": total,
+                    "slots": win_len
+                  } %}
+                  {% set ns.best = ns.best | combine({ win_len: entry }) %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+          {% set wanted = [8,12,16,20,24] %}
+          {% for w in wanted %}
+            {% set rec = ns.best.get(w) %}
+            {% if rec is defined %}
+              {% set line = ((w/4)|int)|string ~ "h " ~ rec.date ~ " " ~ rec.start ~ " (" ~ ("%.3f"|format(rec.total/w)) ~ "kr/avg.)" %}
+              {% set ns.parts = ns.parts + [line] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.parts | join('\n') }}
+        {% endif %}
