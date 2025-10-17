@@ -1,0 +1,29 @@
+  ### Upcoming cheap windows
+  {% set txt = states('sensor.cheapest_electricity_windows') %}
+  {% if txt == 'No data' %}
+  *No data available.*  
+  {% else %}
+  {% for line in txt.split('\n') %}
+  - **{{ line }}**
+  {% endfor %}
+  {% endif %}
+
+  ### Upcoming cheap forecasted 24 Hours windows 
+  {% set txt = states('sensor.cheapest_electricity_windows_next_24_hours') %}
+  {% if txt == 'No data' %}
+  *No data available.*  
+  {% else %}
+  {% for line in txt.split('\n') %}
+  - **{{ line }}**
+  {% endfor %}
+  {% endif %}
+
+  ### Upcoming cheap forecasted windows
+  {% set txt = states('sensor.cheapest_electricity_windows_forecast') %}
+  {% if txt == 'No data' %}
+  *No data available.*  
+  {% else %}
+  {% for line in txt.split('\n') %}
+  - **{{ line }}**
+  {% endfor %}
+  {% endif %}
