@@ -1,0 +1,58 @@
+The creates a few sensors which can be used to get the cheapest time slot for using electricity
+
+
+sensor.electricity_price_table
+ - rows ( rows are based in today and tomorrow, but as tomorrow is not always available. sometime it will only show data for today - Which is why next24h was created which will use forecast data beyound today )
+ - forecast ( using forcast data only )
+ - next24h ( using data from today + forecast data )
+
+
+sensor.cheapest_electricity_windows
+         2h 2025-10-17 12:30 (2.237kr/avg.) 3h 2025-10-17 12:30 (2.244kr/avg.) 4h 2025-10-17 12:30 (2.248kr/avg.) 5h 2025-10-17 11:30 (2.253kr/avg.) 6h 2025-10-17 11:30 (2.335kr/avg.)
+
+sensor.cheapest_electricity_windows_forecast
+         2h 2025-10-21 00:00 (1.850kr/avg.) 3h 2025-10-22 00:00 (2.096kr/avg.) 4h 2025-10-21 00:00 (2.179kr/avg.) 5h 2025-10-17 11:30 (2.253kr/avg.) 6h 2025-10-17 11:30 (2.335kr/avg.)
+
+sensor.cheapest_electricity_windows_next_24_hours
+         2h 2025-10-17 12:30 (2.237kr/avg.) 3h 2025-10-17 12:30 (2.244kr/avg.) 4h 2025-10-17 12:30 (2.248kr/avg.) 5h 2025-10-17 11:30 (2.253kr/avg.) 6h 2025-10-17 11:30 (2.335kr/avg.)
+
+These sensors can be used to create fx markdown widgets. Which can be shown like this, or used for automation.
+
+         Upcoming cheap windows
+
+    2h 2025-10-17 12:30 (2.237kr/avg.)
+
+    3h 2025-10-17 12:30 (2.244kr/avg.)
+
+    4h 2025-10-17 12:30 (2.248kr/avg.)
+
+    5h 2025-10-17 11:30 (2.253kr/avg.)
+
+    6h 2025-10-17 11:30 (2.335kr/avg.)
+
+Upcoming cheap forecasted 24 Hours windows
+
+    2h 2025-10-17 12:30 (2.237kr/avg.)
+
+    3h 2025-10-17 12:30 (2.244kr/avg.)
+
+    4h 2025-10-17 12:30 (2.248kr/avg.)
+
+    5h 2025-10-17 11:30 (2.253kr/avg.)
+
+    6h 2025-10-17 11:30 (2.335kr/avg.)
+
+Upcoming cheap forecasted windows
+
+    2h 2025-10-21 00:00 (1.850kr/avg.)
+
+    3h 2025-10-22 00:00 (2.096kr/avg.)
+
+    4h 2025-10-21 00:00 (2.179kr/avg.)
+
+    5h 2025-10-17 11:30 (2.253kr/avg.)
+
+    6h 2025-10-17 11:30 (2.335kr/avg.)
+
+
+Due to limitations on Home Assistant, I have limited the output to 2,3,4,5,6 hours. This can easily be changed, but you will have to limited the output till what you need 1-12 hours produce to large a data set.
